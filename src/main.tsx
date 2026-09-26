@@ -21,10 +21,20 @@ if (startLevel && LEVELS.some((level) => level.id === startLevel)) {
   controller.startLevel(startLevel);
 }
 
-import.meta.hot?.dispose(() => renderer.dispose());
+// iOS Safari ignores user-scalable=no; block its pinch-zoom gesture explicitly.
+const preventZoom = (event: Event) => event.preventDefault();
+document.addEventListener('gesturestart', preventZoom);
 
-createRoot(uiHost).render(
+const root = createRoot(uiHost);
+root.render(
   <StrictMode>
     <App controller={controller} />
   </StrictMode>,
 );
+
+// During development, Vite re-runs this file on changes: tear the old app down first.
+import.meta.hot?.dispose(() => {
+  root.unmount();
+  renderer.dispose();
+  document.removeEventListener('gesturestart', preventZoom);
+});

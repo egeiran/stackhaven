@@ -20,6 +20,8 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  /* No browser panning or pinch-zoom anywhere; scrollable lists can opt back in with pan-y. */
+  touch-action: none;
 }
 
 #scene {
