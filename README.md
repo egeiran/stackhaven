@@ -51,14 +51,24 @@ src/
   app/      GameController: glue between input, rules, renderer and UI
   render/   Three.js scene, crane/truck animation, touch & mouse picking
   ui/       React HUD, level select, result modal
+  editor/   level editor page (editor.html)
   levels/   levels as JSON
 docs/
   ARCHITECTURE.md   layers and data flow
   GAME_DESIGN.md    rules, level design notes, ideas
 ```
 
-Adding a level: drop a JSON file in `src/levels/` (see `docs/GAME_DESIGN.md`)
-and run `pnpm test`, which validates it and replays its solution.
+## Level editor
+
+`/editor.html` (locally http://localhost:5173/editor.html, or
+https://egeiran.github.io/stackhaven/editor.html) is a small 2D editor: build a
+yard by clicking, set the orders, playtest to record a solution, check it, and
+copy the JSON. **Play in 3D** opens the draft in the real game through a link,
+which also works on a phone.
+
+Adding a level: save the JSON as `src/levels/<id>.json` (see
+`docs/GAME_DESIGN.md`) and run `pnpm test`, which validates it and replays its
+solution.
 
 ## Deployment
 

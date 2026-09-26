@@ -63,6 +63,16 @@ work the same; nothing depends on hover.
   it. That proves the level is solvable and that `par` is achievable, but not
   that `par` is optimal; the solver in milestone 2 will check that.
 
+## Making a level with the editor
+
+1. Open `/editor.html` and load an existing level or start blank.
+2. Pick a colour and click stacks to build the yard; add orders.
+3. **Playtest** and win; **Save as solution** stores your moves and sets par.
+4. **Play in 3D** to try it in the real game (on your phone too).
+5. When the solver exists, **Solve** shows the optimal par and how many states
+   it explored (a first measure of difficulty).
+6. **Copy** the JSON into `src/levels/<id>.json` and run `pnpm test`.
+
 ## Designing levels: a lower bound on moves
 
 Each order needs one `deliver`. A container must be moved at least once if it

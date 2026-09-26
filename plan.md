@@ -5,8 +5,8 @@ Tempo: 5–8 timer i uka. Én milepæl ≈ 2–3 uker.
 
 ## Status nå
 
-**Milepæl:** M1 – Spillbart stable-puslespill (alt unntatt mine egne oppgaver er ferdig). Claude bygger brett-editoren i M2.
-**Neste oppgave:** Spill på mobilen, følg ett trekk gjennom koden (M0) og lag brett nr. 6 (M1)
+**Milepæl:** M1 – Spillbart stable-puslespill (alt unntatt mine egne oppgaver er ferdig). Brett-editoren fra M2 er klar på `/editor.html`; «Løs»-knappen virker når løseren min er skrevet.
+**Neste oppgave:** Spill på mobilen og følg ett trekk gjennom koden (M0), lag brett nr. 6 for hånd i JSON (M1), så løseren (M2)
 **Sist oppdatert:** 2026-09-26
 
 ## Spilleregler for meg selv
@@ -146,6 +146,7 @@ Mål: Stjernene fra brettene brukes til å bygge ut havna.
 | 2026-09-26 | Trykk treffer det som er tegnet, ikke usynlige søyler    | Usynlige søyler ga opptil 50 % feiltrykk på desktop         |
 | 2026-09-26 | Offentlig repo egeiran/stackhaven + GitHub Pages         | Teste på mobilen; CI deployer main automatisk               |
 | 2026-09-26 | Claude oppdaterer «Status nå» og beslutningsloggen       | Planen holdes oppdatert uten at jeg må huske det            |
+| 2026-09-26 | Brett-editor som egen side (editor.html), i 2D           | Enkel; gjenbruker core; 3D-test via ?custom=-lenke          |
 
 ## Parkeringsplassen 🅿️
 

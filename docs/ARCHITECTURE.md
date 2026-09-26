@@ -10,8 +10,10 @@ flowchart LR
   app["app/<br/>GameController"]
   render["render/<br/>Three.js"]
   core["core/<br/>pure TypeScript"]
+  editor["editor/<br/>level editor page"]
 
   main --> ui & app & render
+  editor --> ui & app & core
   ui --> app
   ui --> core
   app --> core
@@ -26,6 +28,7 @@ flowchart LR
 | `render` | Three.js scene: yard, crane, trucks, animation of events, picking                          | `core`, types from `app` |
 | `ui`     | React HUD, level select, result modal                                                      | `core`, `app`            |
 | `levels` | Level JSON files                                                                           | –                        |
+| `editor` | The level editor page (`editor.html`): 2D React, reuses core's rules and schema            | `core`, `app`, `ui`      |
 
 ## Following one move through the code
 

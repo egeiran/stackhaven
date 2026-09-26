@@ -17,7 +17,9 @@ pnpm check          # typecheck + lint + test
 pnpm build          # production build to dist/
 ```
 
-`?level=<id>` in the URL opens a level directly (e.g. `/?level=05-night-shift`).
+`?level=<id>` in the URL opens a level directly (e.g. `/?level=05-night-shift`);
+`?custom=<base64url>` plays a level carried in the link (see `app/levelLink.ts`).
+The level editor is at `/editor.html`.
 
 ## Architecture (hard rules, enforced by ESLint in `eslint.config.js`)
 
@@ -29,6 +31,8 @@ src/render/  Three.js, used imperatively. No React. May import core, and only
 src/ui/      React. No three, no render. May import core and app.
 src/app/     GameController + level registry. No three, no React, no render/ui.
 src/levels/  Level JSON files only.
+src/editor/  Level editor page (editor.html): React, 2D. May import core, app, ui;
+             no three, no render. Nothing else imports the editor.
 src/main.tsx Composition root: the only place that wires the layers together.
 ```
 
