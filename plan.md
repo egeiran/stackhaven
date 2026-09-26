@@ -23,8 +23,8 @@ Tempo: 5–8 timer i uka. Én milepæl ≈ 2–3 uker.
 
 Mål: Repoet kjører, og jeg forstår hvordan det henger sammen.
 
-- [ ] Kjør oppstartsprompten i Claude Code og godkjenn planen den foreslår
-- [ ] `pnpm dev` fungerer lokalt
+- [x] Kjør oppstartsprompten i Claude Code og godkjenn planen den foreslår
+- [x] `pnpm dev` fungerer lokalt
 - [ ] CI er grønn og spillet ligger ute på GitHub Pages
 - [ ] Åpnet spillet på mobilen
 - [ ] Lest `docs/ARCHITECTURE.md` og kan forklare lagene `core` / `render` / `ui` / `app` med egne ord
@@ -36,13 +36,13 @@ Mål: Repoet kjører, og jeg forstår hvordan det henger sammen.
 
 Mål: 5 brett som kan spilles fra start til slutt med enkel grafikk.
 
-- [ ] Spillreglene i `core` med tester (flytt, lever, vinn/tap, stjerner)
-- [ ] Angre fungerer
-- [ ] Containere med `InstancedMesh`, kran med animasjon
-- [ ] Tap/klikk fungerer likt på mus og touch
-- [ ] HUD: trekk, ordrekø, stjerner, angre-knapp
-- [ ] Brettvalg og vinn/tap-skjerm
-- [ ] 5 brett, med test som beviser at de er løsbare
+- [x] Spillreglene i `core` med tester (flytt, lever, vinn/tap, stjerner)
+- [x] Angre fungerer
+- [x] Containere med `InstancedMesh`, kran med animasjon
+- [x] Tap/klikk fungerer likt på mus og touch
+- [x] HUD: trekk, ordrekø, stjerner, angre-knapp
+- [x] Brettvalg og vinn/tap-skjerm
+- [x] 5 brett, med test som beviser at de er løsbare
 - [ ] **Selv:** Lag brett nr. 6 helt på egen hånd i JSON
 
 **Ferdig når:** Jeg kan gi telefonen til en venn, og de skjønner spillet uten forklaring fra meg (eller nesten).
