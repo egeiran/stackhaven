@@ -1,0 +1,5 @@
+dist
+coverage
+pnpm-lock.yaml
+# Eivind's own planning document: edited by hand, never reformatted.
+plan.md
