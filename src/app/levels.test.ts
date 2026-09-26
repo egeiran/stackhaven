@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialState, replay } from '../core';
+import { createInitialState, replay, solve } from '../core';
 import { LEVELS } from './levelRegistry';
 
 const files = import.meta.glob('../levels/*.json');
@@ -32,5 +32,16 @@ describe.each(LEVELS)('level $id', (level) => {
 
   it('has a solution of exactly par moves', () => {
     expect(level.solution).toHaveLength(level.par);
+  });
+});
+
+// Milestone 2: when solve() exists, remove `.skip` to prove that every level's
+// par is optimal – that no shorter solution exists.
+describe.skip.each(LEVELS)('level $id, checked by the solver', (level) => {
+  it('has an optimal par', () => {
+    const result = solve(createInitialState(level));
+
+    expect(result.status).toBe('solved');
+    if (result.status === 'solved') expect(result.moves).toHaveLength(level.par);
   });
 });
