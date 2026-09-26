@@ -6,6 +6,21 @@ export default defineConfig({
   // and later inside a Capacitor shell, without knowing the final path.
   base: './',
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Libraries change rarely: separate chunks stay cached between deploys.
+        codeSplitting: {
+          groups: [
+            { name: 'three', test: /node_modules[\\/]three[\\/]/ },
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+          ],
+        },
+      },
+    },
+    // three.js alone is ~650 kB minified (~170 kB gzipped); that is expected.
+    chunkSizeWarningLimit: 800,
+  },
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',

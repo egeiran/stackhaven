@@ -1,0 +1,433 @@
+/* HUD and menus. The 3D canvas sits underneath; #ui has pointer-events: none,
+   so every interactive element here opts back in.
+   The camera keeps the yard clear of the top/bottom bars: if their height
+   changes a lot, update insetTop/insetBottom in main.tsx. */
+
+:root {
+  --ink: #1f2a33;
+  --ink-soft: #52616d;
+  --panel: rgba(250, 251, 252, 0.86);
+  --panel-border: rgba(31, 42, 51, 0.08);
+  --accent: #2f6db3;
+  --warn: #c8463d;
+  --star: #f2b705;
+  --star-off: rgba(31, 42, 51, 0.18);
+  --radius: 14px;
+  --gutter: 12px;
+  color: var(--ink);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(31, 42, 51, 0.12);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.button {
+  pointer-events: auto;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 80ms ease,
+    opacity 150ms ease;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.button--primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.button--quiet {
+  background: transparent;
+  border-color: transparent;
+  padding: 0 8px;
+}
+
+/* ---------- HUD ---------- */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top) + var(--gutter)) var(--gutter)
+    calc(env(safe-area-inset-bottom) + var(--gutter));
+}
+
+.hud__top {
+  pointer-events: auto;
+  padding: 6px 10px 10px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.hud__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud__row--sub {
+  justify-content: space-between;
+  margin-top: 6px;
+  align-items: flex-end;
+}
+
+.hud__title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud__number {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  margin-right: 4px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+}
+
+.moves {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  min-width: 64px;
+}
+
+.moves__value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.moves__label {
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.moves--low .moves__value {
+  color: var(--warn);
+}
+
+.orders {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+
+.order {
+  width: 16px;
+  height: 22px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.order--next {
+  width: auto;
+  height: 38px;
+  padding: 3px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 8px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  line-height: 1.1;
+}
+
+.order__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+}
+
+.order__name {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.orders__more {
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding-bottom: 3px;
+}
+
+.par {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.par__text {
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.hud__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint {
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(250, 251, 252, 0.8);
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+  max-width: 100%;
+}
+
+.hint__feedback {
+  display: inline-block;
+  color: var(--warn);
+  font-weight: 600;
+  animation: shake 320ms ease;
+}
+
+.hud__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.hud__actions .button {
+  min-width: 120px;
+}
+
+/* ---------- Stars ---------- */
+
+.stars {
+  display: inline-flex;
+  gap: 1px;
+  line-height: 1;
+}
+
+.star {
+  color: var(--star-off);
+}
+
+.star--lit {
+  color: var(--star);
+}
+
+.stars--small {
+  font-size: 18px;
+}
+
+.stars--large {
+  font-size: 48px;
+  gap: 6px;
+}
+
+.stars--large .star--lit {
+  animation: pop 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+.stars--large .star--lit:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.stars--large .star--lit:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+/* ---------- Screens: level select and result modal ---------- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  pointer-events: auto;
+  background: rgba(205, 223, 232, 0.35);
+}
+
+.screen--dim {
+  background: rgba(20, 30, 38, 0.35);
+  animation: fade-in 200ms ease both;
+}
+
+.level-select {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px 18px 18px;
+  text-align: center;
+}
+
+.level-select__title {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+}
+
+.level-select__tagline {
+  margin: 4px 0 18px;
+  color: var(--ink-soft);
+}
+
+.level-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.level-card {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.level-card:active {
+  transform: scale(0.98);
+}
+
+.level-card__number {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+}
+
+.level-card__name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.modal {
+  width: 100%;
+  max-width: 340px;
+  padding: 22px 18px 16px;
+  text-align: center;
+  animation: rise 260ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.modal__title {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.modal__body {
+  margin: 10px 0 18px;
+  color: var(--ink-soft);
+}
+
+.modal__actions {
+  display: grid;
+  gap: 8px;
+}
+
+/* ---------- Animations ---------- */
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

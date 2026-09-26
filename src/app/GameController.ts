@@ -35,6 +35,7 @@ export interface GameView {
   readonly screen: Screen;
   readonly levels: readonly LevelSummary[];
   readonly level: Level | null;
+  /** The state to display: updated when a move's animation has finished. */
   readonly state: GameState | null;
   readonly selectedStack: number | null;
   /** True while the renderer animates a move; input is ignored meanwhile. */
@@ -59,6 +60,11 @@ export class GameController {
   private screen: Screen = 'level-select';
   private level: Level | null = null;
   private history: History<GameState> | null = null;
+  /**
+   * The state the UI shows. It lags behind `history.present` while a move is
+   * animating, so the HUD changes together with the 3D scene, not before it.
+   */
+  private shown: GameState | null = null;
   private selectedStack: number | null = null;
   private isAnimating = false;
   private feedback: GameView['feedback'] = null;
@@ -94,6 +100,7 @@ export class GameController {
 
     this.level = level;
     this.history = createHistory(createInitialState(level));
+    this.shown = this.history.present;
     this.screen = 'playing';
     this.resetSelection();
     this.feedback = null;
@@ -120,6 +127,7 @@ export class GameController {
   undo(): void {
     if (this.isAnimating || !this.history || !canUndo(this.history)) return;
     this.history = undoHistory(this.history);
+    this.shown = this.history.present;
     this.resetSelection();
     this.feedback = null;
     this.renderer.showState(this.history.present);
@@ -170,6 +178,7 @@ export class GameController {
       await this.renderer.playEvents(result.events, result.state);
     } finally {
       this.isAnimating = false;
+      this.shown = result.state;
       if (result.state.status === 'won') {
         this.recordStars(this.level.id, computeStars(result.state.movesUsed, this.level.par));
       }
@@ -209,7 +218,7 @@ export class GameController {
   }
 
   private buildView(): GameView {
-    const state = this.history?.present ?? null;
+    const state = this.shown;
     return {
       screen: this.screen,
       levels: this.levels.map((level) => ({

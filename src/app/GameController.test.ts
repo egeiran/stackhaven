@@ -148,12 +148,24 @@ describe('animation lock', () => {
     await controller.handleTap(stack(1));
     controller.undo();
     expect(view().selectedStack).toBeNull();
-    expect(view().state?.movesUsed).toBe(1);
 
     renderer.finishAnimations();
     await moving;
     expect(view().isAnimating).toBe(false);
+    expect(view().state?.movesUsed).toBe(1);
     expect(view().canUndo).toBe(true);
+  });
+
+  it('shows the new state only once the animation has finished', async () => {
+    renderer.paused = true;
+    await controller.handleTap(stack(0));
+    const moving = controller.handleTap(stack(2));
+
+    expect(view().state?.movesUsed).toBe(0);
+
+    renderer.finishAnimations();
+    await moving;
+    expect(view().state?.movesUsed).toBe(1);
   });
 });
 
@@ -217,7 +229,7 @@ describe('winning', () => {
     renderer.paused = true;
 
     const finalMove = controller.handleTap(truck);
-    expect(view().state?.status).toBe('won');
+    expect(view().isAnimating).toBe(true);
     expect(view().outcome).toBeNull();
 
     renderer.finishAnimations();
