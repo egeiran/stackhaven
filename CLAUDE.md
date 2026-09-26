@@ -69,6 +69,8 @@ src/main.tsx Composition root: the only place that wires the layers together.
 - **Never implement the solver** (`src/core/solver.ts`, BFS/A*), not even as a
   throwaway helper. Eivind writes it himself in milestone 2; its spec is the
   skipped suite in `src/core/solver.test.ts`.
-- When a task in `plan.md` is done, tick its checkbox. Do not otherwise
-  rewrite `plan.md`.
+- Keep `plan.md` up to date: tick a task's checkbox when it is done, update
+  «Status nå» (milestone, next task, date) at the end of each piece of work,
+  and add notable decisions to «Beslutningslogg». Do not otherwise restructure
+  or reword Eivind's plan.
 - If something is unclear or contradictory, ask before building on a guess.

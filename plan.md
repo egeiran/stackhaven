@@ -5,8 +5,8 @@ Tempo: 5–8 timer i uka. Én milepæl ≈ 2–3 uker.
 
 ## Status nå
 
-**Milepæl:** M0 – Oppsett
-**Neste oppgave:** Kjør oppstartsprompten i Claude Code
+**Milepæl:** M1 – Spillbart stable-puslespill (alt unntatt mine egne oppgaver er ferdig). Claude bygger brett-editoren i M2.
+**Neste oppgave:** Spill på mobilen, følg ett trekk gjennom koden (M0) og lag brett nr. 6 (M1)
 **Sist oppdatert:** 2026-09-26
 
 ## Spilleregler for meg selv
@@ -142,6 +142,10 @@ Mål: Stjernene fra brettene brukes til å bygge ut havna.
 | 2026-09-26 | Turbasert puslespill + havn-meta (Gardenscapes-modellen) | Mobilvennlig, testbar kjerne, kombinerer brett og sandbox   |
 | 2026-09-26 | Første milepæl: stable-puslespill før grafikk            | Finne ut om kjernen er gøy før jeg bruker tid på utseende   |
 | 2026-09-26 | Jeg skriver løseren selv                                 | Best læring, knyttet til KI-emnet                           |
+| 2026-09-26 | Input-kø i stedet for å låse input under animasjoner     | Føles smidigere; trykk sjekkes mot logisk tilstand          |
+| 2026-09-26 | Trykk treffer det som er tegnet, ikke usynlige søyler    | Usynlige søyler ga opptil 50 % feiltrykk på desktop         |
+| 2026-09-26 | Offentlig repo egeiran/stackhaven + GitHub Pages         | Teste på mobilen; CI deployer main automatisk               |
+| 2026-09-26 | Claude oppdaterer «Status nå» og beslutningsloggen       | Planen holdes oppdatert uten at jeg må huske det            |
 
 ## Parkeringsplassen 🅿️
 
