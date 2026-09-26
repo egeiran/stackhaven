@@ -1,5 +1,5 @@
-import type { Box3 } from 'three';
-import { MathUtils, Vector3, type PerspectiveCamera } from 'three';
+import { Box3, MathUtils, Vector3, type PerspectiveCamera } from 'three';
+import type { YardLayout } from './layout';
 
 export interface FramingOptions {
   /** Angle above the ground, in degrees. */
@@ -14,6 +14,35 @@ export interface FramingOptions {
 }
 
 const WORLD_UP = new Vector3(0, 1, 0);
+
+/** Everything the camera must keep in view: stacks, crane, bay and truck. */
+export function yardBounds(layout: YardLayout): Box3 {
+  return new Box3(
+    new Vector3(layout.minX - 0.1, 0, -2.2),
+    new Vector3(layout.maxX + 0.1, layout.craneTopY + 0.3, 2.2),
+  );
+}
+
+/**
+ * The camera angle for a screen size. Portrait screens have height to spare,
+ * so look down more steeply to fill it; landscape screens get a lower, more
+ * three-dimensional view.
+ */
+export function yardFraming(
+  width: number,
+  height: number,
+  insetTop: number,
+  insetBottom: number,
+): FramingOptions {
+  const portrait = MathUtils.clamp((1.3 - width / height) / 0.8, 0, 1);
+  return {
+    elevation: MathUtils.lerp(30, 46, portrait),
+    azimuth: MathUtils.lerp(18, 10, portrait),
+    insetTop,
+    insetBottom,
+    sideMargin: 0.04,
+  };
+}
 
 /**
  * Places the camera so that `box` fills the free part of the screen.
@@ -73,4 +102,6 @@ export function frameBox(
   const shift = bottomFraction - topFraction; // in -1..1 screen units
   camera.setViewOffset(width, height, 0, (shift * height) / 2, width, height);
   camera.updateProjectionMatrix();
+  // Picking may happen before the next render, so don't wait for it to update the matrices.
+  camera.updateMatrixWorld();
 }

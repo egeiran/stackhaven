@@ -137,6 +137,8 @@ export class ContainerField {
     const position = this.positions.get(id);
     this.mesh.setMatrixAt(index, position ? this.matrix.makeTranslation(position) : HIDDEN);
     this.mesh.instanceMatrix.needsUpdate = true;
+    // Raycasting checks a cached bounding sphere first; recompute it lazily after moves.
+    this.mesh.boundingSphere = null;
   }
 
   private writeColor(id: string): void {

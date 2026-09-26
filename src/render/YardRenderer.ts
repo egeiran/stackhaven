@@ -1,36 +1,27 @@
+import type { Vector2 } from 'three';
 import {
   ACESFilmicToneMapping,
-  Box3,
-  BoxGeometry,
   Color,
   DirectionalLight,
   Fog,
-  Group,
   HemisphereLight,
   MathUtils,
-  Mesh,
-  MeshBasicMaterial,
   PCFShadowMap,
   PerspectiveCamera,
+  Raycaster,
   Scene,
   SRGBColorSpace,
   Timer,
-  Vector3,
   WebGLRenderer,
 } from 'three';
 import type { GameRenderer, TapTarget } from '../app/ports';
 import type { ContainerColor, GameEvent, GameState } from '../core';
 import { Animator, easeInCubic, easeOutCubic, type Easing } from './animator';
-import { frameBox } from './camera';
+import { frameBox, yardBounds, yardFraming } from './camera';
+import { pickTarget } from './picking';
 import { ContainerField } from './ContainerField';
 import { Crane } from './Crane';
-import {
-  CONTAINER_SIZE,
-  createLayout,
-  STACK_SPACING,
-  TRUCK_BED_Y,
-  type YardLayout,
-} from './layout';
+import { CONTAINER_SIZE, createLayout, TRUCK_BED_Y, type YardLayout } from './layout';
 import { TapPicker } from './TapPicker';
 import { THEME } from './theme';
 import { Truck } from './Truck';
@@ -71,7 +62,7 @@ export class YardRenderer implements GameRenderer {
   private readonly crane = new Crane();
   /** Two trucks, so the next one can drive in while the loaded one drives off. */
   private trucks: [Truck, Truck] = [new Truck(), new Truck()];
-  private readonly pickTargets = new Group();
+  private readonly raycaster = new Raycaster();
   private readonly picker: TapPicker;
   private readonly resizeObserver: ResizeObserver;
   private readonly tapHandlers = new Set<(target: TapTarget) => void>();
@@ -103,15 +94,13 @@ export class YardRenderer implements GameRenderer {
       this.floor.group,
       this.containers.group,
       this.crane.group,
-      this.pickTargets,
       ...this.trucks.map((truck) => truck.group),
     );
     this.applyLayout(this.layout);
 
     this.picker = new TapPicker(
       this.renderer.domElement,
-      this.camera,
-      this.pickTargets,
+      (ndc) => this.pick(ndc),
       (target) => {
         for (const handler of this.tapHandlers) handler(target);
       },
@@ -315,7 +304,6 @@ export class YardRenderer implements GameRenderer {
     this.crane.build(layout);
     this.crane.x = (layout.stackX(0) + layout.bayX) / 2;
     for (const truck of this.trucks) truck.group.position.x = layout.bayX;
-    this.buildPickTargets(layout);
 
     // Keep the shadow camera tight around the yard: sharper shadows for the same map size.
     const halfWidth = (layout.maxX - layout.minX) / 2 + 3;
@@ -333,50 +321,37 @@ export class YardRenderer implements GameRenderer {
     this.frame();
   }
 
-  /**
-   * Invisible boxes that catch taps: one tall column per stack (so an empty
-   * stack is as easy to hit as a full one) and one box over the truck bay.
-   */
-  private buildPickTargets(layout: YardLayout): void {
-    for (const child of this.pickTargets.children) (child as Mesh).geometry.dispose();
-    this.pickTargets.clear();
-    const material = new MeshBasicMaterial({ visible: false });
-    const columnHeight = layout.travelHookY;
-    const depth = CONTAINER_SIZE.length + 0.4;
-
-    const add = (target: TapTarget, x: number, width: number, height: number) => {
-      const mesh = new Mesh(new BoxGeometry(width, height, depth), material);
-      mesh.position.set(x, height / 2, 0);
-      mesh.userData.tapTarget = target;
-      this.pickTargets.add(mesh);
-    };
-    for (let index = 0; index < layout.stackCount; index++) {
-      add({ kind: 'stack', index }, layout.stackX(index), STACK_SPACING, columnHeight);
-    }
-    add({ kind: 'delivery' }, layout.bayX, STACK_SPACING + 0.2, TRUCK_BED_Y + 2);
-  }
-
-  /** Everything the camera must keep in view: stacks, crane, bay and truck. */
-  private frameBoxFor(layout: YardLayout): Box3 {
-    return new Box3(
-      new Vector3(layout.minX - 0.1, 0, -2.2),
-      new Vector3(layout.maxX + 0.1, layout.craneTopY + 0.3, 2.2),
+  /** What is under a tap: see picking.ts. */
+  private pick(ndc: Vector2): TapTarget | null {
+    return pickTarget(
+      {
+        camera: this.camera,
+        surfaces: [
+          this.containers.group,
+          this.floor.slotGroup,
+          ...this.trucks.map((truck) => truck.group),
+        ],
+        layout: this.layout,
+        stackHeights: this.state?.stacks.map((stack) => stack.length) ?? [],
+        width: this.host.clientWidth,
+        height: this.host.clientHeight,
+      },
+      ndc,
+      this.raycaster,
     );
   }
 
   private frame(): void {
     const { clientWidth: width, clientHeight: height } = this.host;
     if (width === 0 || height === 0) return;
-    // Portrait screens have height to spare: look down more steeply so the yard
-    // fills it. Landscape screens get a lower, more three-dimensional view.
-    const portrait = MathUtils.clamp((1.3 - width / height) / 0.8, 0, 1);
-    frameBox(this.camera, this.frameBoxFor(this.layout), width, height, {
-      elevation: MathUtils.lerp(30, 46, portrait),
-      azimuth: MathUtils.lerp(18, 10, portrait),
-      insetTop: this.options.insetTop,
-      insetBottom: this.options.insetBottom,
-      sideMargin: 0.04,
-    });
+    const { insetTop, insetBottom } = this.options;
+    frameBox(
+      this.camera,
+      yardBounds(this.layout),
+      width,
+      height,
+      yardFraming(width, height, insetTop, insetBottom),
+    );
     this.requestRender();
   }
 

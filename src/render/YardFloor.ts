@@ -14,6 +14,8 @@ const unitBox = new BoxGeometry(1, 1, 1);
 /** The ground: asphalt, a concrete yard pad, slot markings, the truck lane and the quay edge. */
 export class YardFloor {
   readonly group = new Group();
+  /** The slot markings on the ground: tappable, so an empty stack can be picked. */
+  readonly slotGroup = new Group();
   private readonly materials = {
     ground: new MeshStandardMaterial({ color: THEME.ground, roughness: 0.95 }),
     pad: new MeshStandardMaterial({ color: THEME.yardPad, roughness: 0.9 }),
@@ -34,6 +36,7 @@ export class YardFloor {
 
   build(layout: YardLayout): void {
     this.group.clear();
+    this.slotGroup.clear();
     this.slots = [];
     const m = this.materials;
     const flat = (
@@ -84,6 +87,7 @@ export class YardFloor {
       0,
     );
 
+    this.group.add(this.slotGroup);
     for (let i = 0; i < layout.stackCount; i++) {
       const slot = flat(
         m.slot,
@@ -93,6 +97,7 @@ export class YardFloor {
         0.02,
         0,
       );
+      this.slotGroup.add(slot);
       this.slots.push(slot);
     }
 

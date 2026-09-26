@@ -1,4 +1,4 @@
-import { Raycaster, Vector2, type Camera, type Object3D } from 'three';
+import { Vector2 } from 'three';
 import type { TapTarget } from '../app/ports';
 
 /** A press that moves further than this is a drag, not a tap. */
@@ -7,20 +7,16 @@ const TAP_SLOP_PX = 14;
 const TAP_MAX_MS = 700;
 
 /**
- * Turns pointer presses on the canvas into TapTargets. Pointer Events cover
- * mouse, touch and pen with one API, and a tap is detected on release, so
- * nothing depends on hover. Targets are found by raycasting against invisible
- * boxes that carry a `tapTarget` in their userData.
+ * Turns pointer presses on the canvas into taps. Pointer Events cover mouse,
+ * touch and pen with one API, and a tap is detected on release, so nothing
+ * depends on hover. What was tapped is decided by `pick` (see picking.ts).
  */
 export class TapPicker {
-  private readonly raycaster = new Raycaster();
-  private readonly pointer = new Vector2();
   private press: { id: number; x: number; y: number; time: number } | null = null;
 
   constructor(
     private readonly element: HTMLElement,
-    private readonly camera: Camera,
-    private readonly targets: Object3D,
+    private readonly pick: (ndc: Vector2) => TapTarget | null,
     private readonly onTap: (target: TapTarget) => void,
   ) {
     element.addEventListener('pointerdown', this.handleDown);
@@ -32,21 +28,6 @@ export class TapPicker {
     this.element.removeEventListener('pointerdown', this.handleDown);
     this.element.removeEventListener('pointerup', this.handleUp);
     this.element.removeEventListener('pointercancel', this.handleCancel);
-  }
-
-  /** What is under a point on the screen (client coordinates), if anything. */
-  pick(clientX: number, clientY: number): TapTarget | null {
-    const rect = this.element.getBoundingClientRect();
-    this.pointer.set(
-      ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    for (const hit of this.raycaster.intersectObject(this.targets, true)) {
-      const target = hit.object.userData.tapTarget as TapTarget | undefined;
-      if (target) return target;
-    }
-    return null;
   }
 
   private readonly handleDown = (event: PointerEvent) => {
@@ -63,7 +44,12 @@ export class TapPicker {
     const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
     if (moved > TAP_SLOP_PX || event.timeStamp - press.time > TAP_MAX_MS) return;
 
-    const target = this.pick(event.clientX, event.clientY);
+    const rect = this.element.getBoundingClientRect();
+    const ndc = new Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    const target = this.pick(ndc);
     if (target) this.onTap(target);
   };
 
