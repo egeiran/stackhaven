@@ -14,7 +14,7 @@ import {
   Timer,
   WebGLRenderer,
 } from 'three';
-import type { GameRenderer, TapTarget } from '../app/ports';
+import type { GameRenderer, Selection, TapTarget } from '../app/ports';
 import type { ContainerColor, GameEvent, GameState } from '../core';
 import { Animator, easeInCubic, easeOutCubic, type Easing } from './animator';
 import { frameBox, yardBounds, yardFraming } from './camera';
@@ -72,6 +72,13 @@ export class YardRenderer implements GameRenderer {
   private carried: string | null = null;
   /** Container riding on each truck, if any. */
   private readonly cargo = new Map<Truck, string>();
+  /** Resolves when the trucks have finished swapping after the last delivery. */
+  private trucksReady: Promise<void> = Promise.resolve();
+  private selection: Selection | null = null;
+  /** True while playEvents is animating a move. */
+  private busy = false;
+  /** Bumped by showState so that aborted animations stop where they are. */
+  private generation = 0;
   private needsRender = true;
 
   constructor(
@@ -117,7 +124,10 @@ export class YardRenderer implements GameRenderer {
   // --- GameRenderer ---
 
   showState(state: GameState | null): void {
+    // Abort whatever is animating: stale animation code checks the generation and stops.
+    this.generation++;
     this.animator.cancel();
+    this.busy = false;
     this.state = state;
     const layout = createLayout(
       state?.stacks.length ?? EMPTY_QUAY.stacks,
@@ -142,24 +152,38 @@ export class YardRenderer implements GameRenderer {
     parked.z = order ? 0 : TRUCK_EXIT_Z;
     spare.setOrder(null);
     spare.z = TRUCK_ENTRY_Z;
+    this.trucksReady = Promise.resolve();
     this.requestRender();
   }
 
   async playEvents(events: readonly GameEvent[], finalState: GameState): Promise<void> {
-    for (const event of events) await this.animate(event);
+    const generation = this.generation;
+    this.busy = true;
+    for (const event of events) {
+      await this.animate(event, generation);
+      if (generation !== this.generation) return;
+    }
     // The animations should already match finalState; syncing guards against drift.
+    // Containers still riding away on a truck are left where they are.
     this.state = finalState;
-    this.containers.sync(finalState, this.layout);
+    this.containers.sync(finalState, this.layout, new Set(this.cargo.values()));
+    this.containers.setHighlighted(this.selection?.containerId ?? null);
+    this.busy = false;
     this.requestRender();
   }
 
-  setSelection(stack: number | null): void {
-    this.floor.setSelected(stack);
-    const top = stack === null ? undefined : this.state?.stacks[stack]?.at(-1);
-    this.containers.setHighlighted(top?.id ?? null);
-    // Roll the crane over the selected stack as feedback (not awaited: purely cosmetic).
-    if (stack !== null) void this.moveCraneTo(this.layout.stackX(stack));
+  setSelection(selection: Selection | null): void {
+    this.selection = selection;
+    this.floor.setSelected(selection?.stack ?? null);
+    this.containers.setHighlighted(selection?.containerId ?? null);
+    // Roll the crane over the selected stack as feedback, unless it is busy with a move.
+    if (selection && !this.busy) void this.moveCraneTo(this.layout.stackX(selection.stack));
     this.requestRender();
+  }
+
+  setBacklog(count: number): void {
+    // Hurry while moves are waiting, so the crane never lags far behind the player.
+    this.animator.timeScale = 1 + 0.6 * Math.min(count, 2);
   }
 
   onTap(handler: (target: TapTarget) => void): () => void {
@@ -183,36 +207,44 @@ export class YardRenderer implements GameRenderer {
   }
 
   // --- Event animations ---
+  // Every await is followed by a generation check: if showState was called in
+  // the meantime (undo, restart), the rest of the animation is skipped.
 
-  private async animate(event: GameEvent): Promise<void> {
+  private async animate(event: GameEvent, generation: number): Promise<void> {
+    const aborted = () => generation !== this.generation;
     switch (event.type) {
       case 'ContainerLifted':
         await this.moveCraneTo(this.layout.stackX(event.from));
+        if (aborted()) return;
         await this.moveHookTo(this.hookYAbove(event.height));
+        if (aborted()) return;
         this.carried = event.containerId;
         await this.moveHookTo(this.layout.travelHookY);
         return;
 
       case 'ContainerPlaced':
         await this.moveCraneTo(this.layout.stackX(event.to));
+        if (aborted()) return;
         await this.moveHookTo(this.hookYAbove(event.height));
+        if (aborted()) return;
         this.carried = null;
         await this.moveHookTo(this.layout.travelHookY);
         return;
 
       case 'ContainerDelivered': {
-        const [truck] = this.trucks;
-        await this.moveCraneTo(this.layout.bayX);
+        // The crane can travel while the previous truck swap finishes; it only
+        // has to wait for the truck before setting the container down.
+        await Promise.all([this.moveCraneTo(this.layout.bayX), this.trucksReady]);
+        if (aborted()) return;
         await this.moveHookTo(TRUCK_BED_Y + CONTAINER_SIZE.height);
+        if (aborted()) return;
+        const [truck] = this.trucks;
         this.carried = null;
         this.cargo.set(truck, event.containerId);
         truck.loaded = true;
-        await Promise.all([
-          this.moveHookTo(this.layout.travelHookY),
-          this.swapTrucks(event.nextOrder),
-        ]);
-        this.cargo.delete(truck);
-        this.containers.hide(event.containerId);
+        // The trucks swap in the background: the next move need not wait for them.
+        this.trucksReady = this.swapTrucks(event.nextOrder, generation);
+        await this.moveHookTo(this.layout.travelHookY);
         return;
       }
 
@@ -222,8 +254,11 @@ export class YardRenderer implements GameRenderer {
     }
   }
 
-  /** The loaded truck drives off; if there is another order, the next truck drives in. */
-  private async swapTrucks(nextOrder: ContainerColor | null): Promise<void> {
+  /**
+   * The loaded truck drives off with its container; if there is another order,
+   * the next truck drives in. Resolves when both trucks are done moving.
+   */
+  private async swapTrucks(nextOrder: ContainerColor | null, generation: number): Promise<void> {
     const [leaving, arriving] = this.trucks;
     this.trucks = [arriving, leaving];
     arriving.setOrder(nextOrder);
@@ -231,6 +266,11 @@ export class YardRenderer implements GameRenderer {
 
     const departure = this.tweenTo(leaving.z, TRUCK_EXIT_Z, 0.8, (z) => (leaving.z = z), {
       ease: easeInCubic,
+    }).then(() => {
+      if (generation !== this.generation) return;
+      const delivered = this.cargo.get(leaving);
+      this.cargo.delete(leaving);
+      if (delivered) this.containers.hide(delivered);
     });
     const arrival = nextOrder
       ? this.tweenTo(TRUCK_ENTRY_Z, 0, 0.55, (z) => (arriving.z = z), {
@@ -248,9 +288,7 @@ export class YardRenderer implements GameRenderer {
       x,
       craneTravelTime(Math.abs(x - from)),
       (value) => (this.crane.x = value),
-      {
-        key: 'crane-x',
-      },
+      { key: 'crane-x' },
     );
   }
 
@@ -261,9 +299,7 @@ export class YardRenderer implements GameRenderer {
       y,
       hookTravelTime(Math.abs(y - from)),
       (value) => (this.crane.hookY = value),
-      {
-        key: 'crane-hook',
-      },
+      { key: 'crane-hook' },
     );
   }
 

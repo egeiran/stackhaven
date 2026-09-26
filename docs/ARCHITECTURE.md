@@ -48,11 +48,11 @@ sequenceDiagram
   TP->>GC: handleTap({kind: 'stack', index: 2})
   GC->>C: applyMove(state, {type: 'move', from: 0, to: 2})
   C-->>GC: {ok, state', events: [ContainerLifted, ContainerPlaced]}
-  GC->>GC: push state' to undo history, lock input
+  GC->>GC: push state' to undo history, queue its animation
   GC->>YR: await playEvents(events, state')
   YR->>YR: crane: travel, lower, grab, raise, travel, lower, release
   YR-->>GC: animation finished
-  GC-->>UI: publish GameView (state', moves + 1, input unlocked)
+  GC-->>UI: publish GameView (state' on screen, moves + 1)
 ```
 
 Where to look:
@@ -84,10 +84,19 @@ tests in `src/core/engine.test.ts`.
 the controller needs. `YardRenderer` implements it with Three.js; the tests use
 a fake. So `app` never depends on Three.js, and the dependency points inwards.
 
-**Input is locked during animations.** `GameController.commit` awaits
-`renderer.playEvents(...)` and ignores taps meanwhile. The UI's `GameView.state`
-is updated when the animation finishes, so the HUD and the 3D scene change
-together.
+**Input is queued, never blocked.** The controller keeps two states: the
+_logical_ state (`history.present`), which every tap is checked against, and
+the _shown_ state, which lags behind while animations play. A legal move is
+applied at once and its events join a queue that the renderer plays in order,
+faster while moves are waiting (`setBacklog`). Undo and restart abandon the
+queue and call `renderer.showState`, which aborts the running animation (a
+generation counter tells stale animation code to stop). The HUD shows the
+shown state, so it changes together with the 3D scene.
+
+**Picking follows what is drawn.** A tap is raycast against the visible
+containers, slot markings and trucks, and the hit's column decides the target;
+if nothing is hit, the stack nearest on screen within a finger's width wins
+(`render/picking.ts`).
 
 **One owner of mutable state.** Everything that changes during play (level,
 undo history, selection, animation lock, best stars) lives in

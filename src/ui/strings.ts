@@ -26,7 +26,7 @@ export function colorName(color: ContainerColor): string {
   return PALETTE[color].label.toLowerCase();
 }
 
-export function feedbackText(feedback: Feedback, nextOrder: ContainerColor | undefined): string {
+export function feedbackText(feedback: Feedback, nextOrder: ContainerColor | null): string {
   switch (feedback) {
     case 'empty-stack':
       return 'That stack is empty.';

@@ -41,8 +41,11 @@ export class ContainerField {
     this.geometry.translate(0, (height * 0.96) / 2, 0);
   }
 
-  /** Places every container of `state` in its stack and hides all others. */
-  sync(state: GameState, layout: YardLayout): void {
+  /**
+   * Places every container of `state` in its stack and hides all others,
+   * except those in `keep` (e.g. delivered containers still driving away).
+   */
+  sync(state: GameState, layout: YardLayout, keep: ReadonlySet<string> = new Set()): void {
     const present = new Set<string>();
     state.stacks.forEach((stack, stackIndex) => {
       stack.forEach((container, height) => {
@@ -52,7 +55,7 @@ export class ContainerField {
       });
     });
     for (const id of this.indices.keys()) {
-      if (!present.has(id)) this.positions.set(id, null);
+      if (!present.has(id) && !keep.has(id)) this.positions.set(id, null);
     }
     this.highlighted = null;
     this.writeAll();

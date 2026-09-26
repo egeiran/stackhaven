@@ -57,4 +57,15 @@ describe('Animator', () => {
     await first; // resolved by the replacement
     expect(animator.isActive).toBe(true);
   });
+
+  it('runs faster with a higher time scale', () => {
+    const animator = new Animator();
+    const values: number[] = [];
+    void animator.tween(1, (p) => values.push(p), { ease: linear });
+
+    animator.timeScale = 2;
+    animator.update(0.25);
+
+    expect(values).toEqual([0.5]);
+  });
 });

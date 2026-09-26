@@ -7,6 +7,8 @@ import {
   pushHistory,
   STANDARD_RULES,
   undoHistory,
+  type ContainerColor,
+  type GameEvent,
   type GameState,
   type History,
   type Level,
@@ -35,17 +37,29 @@ export interface GameView {
   readonly screen: Screen;
   readonly levels: readonly LevelSummary[];
   readonly level: Level | null;
-  /** The state to display: updated when a move's animation has finished. */
+  /** The state on screen: a move is counted here once its animation has finished. */
   readonly state: GameState | null;
   readonly selectedStack: number | null;
-  /** True while the renderer animates a move; input is ignored meanwhile. */
+  /** True while moves are being animated (more may be queued behind). */
   readonly isAnimating: boolean;
   readonly canUndo: boolean;
-  /** Set when the level is over and its last animation has finished. */
+  /** Set when the level is over and the last animation has finished. */
   readonly outcome: Outcome | null;
   readonly hasNextLevel: boolean;
   /** `seq` increases on every message, so the UI can show the same message twice. */
-  readonly feedback: { readonly message: Feedback; readonly seq: number } | null;
+  readonly feedback: {
+    readonly message: Feedback;
+    readonly seq: number;
+    /** The order the truck was waiting for when the message was given. */
+    readonly nextOrder: ContainerColor | null;
+  } | null;
+}
+
+/** A move that has been applied to the rules but not yet shown. */
+interface QueuedAnimation {
+  readonly events: readonly GameEvent[];
+  readonly state: GameState;
+  readonly done: () => void;
 }
 
 /**
@@ -53,21 +67,28 @@ export interface GameView {
  * (the only place in the app that does), turns taps into moves, asks core to
  * apply them, sends the resulting events to the renderer and publishes a
  * GameView that React reads with useSyncExternalStore.
+ *
+ * Input is never blocked by animations. Each tap is checked against the
+ * *logical* state (history.present), which runs ahead of the screen: a legal
+ * move is applied immediately and its animation is queued behind the ones
+ * already playing. Undo and restart cut the queue short and jump straight to
+ * the resulting state.
  */
 export class GameController {
   private readonly listeners = new Set<() => void>();
   private readonly bestStars = new Map<string, Stars>();
   private screen: Screen = 'level-select';
   private level: Level | null = null;
+  /** The logical game: every applied move, including ones still waiting to be animated. */
   private history: History<GameState> | null = null;
-  /**
-   * The state the UI shows. It lags behind `history.present` while a move is
-   * animating, so the HUD changes together with the 3D scene, not before it.
-   */
+  /** What the player currently sees; lags behind history.present while animating. */
   private shown: GameState | null = null;
   private selectedStack: number | null = null;
-  private isAnimating = false;
   private feedback: GameView['feedback'] = null;
+  private queue: QueuedAnimation[] = [];
+  private isAnimating = false;
+  /** Bumped whenever the queue is abandoned, so a stale animation loop knows to stop. */
+  private generation = 0;
   private view: GameView;
 
   constructor(
@@ -94,18 +115,13 @@ export class GameController {
   // --- Commands from the UI ---
 
   startLevel(id: string): void {
-    if (this.isAnimating) return;
     const level = this.levels.find((candidate) => candidate.id === id);
     if (!level) throw new Error(`Unknown level "${id}"`);
 
     this.level = level;
-    this.history = createHistory(createInitialState(level));
-    this.shown = this.history.present;
     this.screen = 'playing';
-    this.resetSelection();
     this.feedback = null;
-    this.renderer.showState(this.history.present);
-    this.publish();
+    this.jumpTo(createHistory(createInitialState(level)));
   }
 
   restart(): void {
@@ -118,34 +134,29 @@ export class GameController {
   }
 
   openLevelSelect(): void {
-    if (this.isAnimating) return;
+    // Finish instantly so the scene behind the menu is up to date.
+    if (this.history) this.jumpTo(this.history);
     this.screen = 'level-select';
-    this.resetSelection();
     this.publish();
   }
 
+  /** Takes back the latest move, even one that is still waiting to be animated. */
   undo(): void {
-    if (this.isAnimating || !this.history || !canUndo(this.history)) return;
-    this.history = undoHistory(this.history);
-    this.shown = this.history.present;
-    this.resetSelection();
+    if (!this.history || !canUndo(this.history)) return;
     this.feedback = null;
-    this.renderer.showState(this.history.present);
-    this.publish();
+    this.jumpTo(undoHistory(this.history));
   }
 
   // --- Input from the renderer ---
 
   /**
    * Tap a stack to select it, tap another stack to move there, tap the truck
-   * to deliver. Returns a promise that settles when any resulting animation
-   * has finished (useful in tests; the renderer ignores it).
+   * to deliver. Returns a promise that settles when the resulting move has
+   * been animated (useful in tests; the renderer ignores it).
    */
   async handleTap(target: TapTarget): Promise<void> {
     const state = this.history?.present;
-    if (this.screen !== 'playing' || !state || this.isAnimating || state.status !== 'playing') {
-      return;
-    }
+    if (this.screen !== 'playing' || !state || state.status !== 'playing') return;
     const selected = this.selectedStack;
 
     if (target.kind === 'delivery') {
@@ -163,49 +174,93 @@ export class GameController {
 
   // --- Internals ---
 
-  private async commit(move: Move): Promise<void> {
-    if (!this.history || !this.level) return;
+  private commit(move: Move): Promise<void> {
+    if (!this.history) return Promise.resolve();
     const result = applyMove(this.history.present, move, this.rules);
-    if (!result.ok) return this.showFeedback(result.error);
+    if (!result.ok) {
+      this.showFeedback(result.error);
+      return Promise.resolve();
+    }
 
     this.history = pushHistory(this.history, result.state);
-    this.resetSelection();
+    this.clearSelection();
     this.feedback = null;
+    const animated = new Promise<void>((done) => {
+      this.queue.push({ events: result.events, state: result.state, done });
+    });
+    this.renderer.setBacklog(this.queue.length - 1);
+    if (!this.isAnimating) void this.playQueue();
+    this.publish();
+    return animated;
+  }
+
+  /** Plays queued animations one after another until the queue is empty. */
+  private async playQueue(): Promise<void> {
+    const generation = this.generation;
     this.isAnimating = true;
     this.publish();
 
-    try {
-      await this.renderer.playEvents(result.events, result.state);
-    } finally {
-      this.isAnimating = false;
-      this.shown = result.state;
-      if (result.state.status === 'won') {
-        this.recordStars(this.level.id, computeStars(result.state.movesUsed, this.level.par));
-      }
+    for (let next = this.queue[0]; next; next = this.queue[0]) {
+      this.renderer.setBacklog(this.queue.length - 1);
+      await this.renderer.playEvents(next.events, next.state);
+      // Undo/restart abandoned this queue while we waited; they have cleaned up.
+      if (generation !== this.generation) return;
+
+      this.queue.shift();
+      this.shown = next.state;
+      this.recordStarsIfWon(next.state);
+      next.done();
       this.publish();
     }
-  }
 
-  private select(stack: number | null): void {
-    this.selectedStack = stack;
-    this.feedback = null;
-    this.renderer.setSelection(stack);
+    this.isAnimating = false;
+    this.renderer.setBacklog(0);
     this.publish();
   }
 
-  private resetSelection(): void {
+  /** Abandons all queued animations and shows `history.present` immediately. */
+  private jumpTo(history: History<GameState>): void {
+    this.generation++;
+    for (const queued of this.queue) queued.done();
+    this.queue = [];
+    this.isAnimating = false;
+    this.renderer.setBacklog(0);
+
+    this.history = history;
+    this.shown = history.present;
+    this.clearSelection();
+    this.renderer.showState(history.present);
+    this.publish();
+  }
+
+  private select(stack: number | null): void {
+    const container = stack === null ? undefined : this.history?.present.stacks[stack]?.at(-1);
+    this.selectedStack = container ? stack : null;
+    this.feedback = null;
+    this.renderer.setSelection(
+      container && stack !== null ? { stack, containerId: container.id } : null,
+    );
+    this.publish();
+  }
+
+  private clearSelection(): void {
     this.selectedStack = null;
     this.renderer.setSelection(null);
   }
 
   private showFeedback(message: Feedback): void {
-    this.feedback = { message, seq: (this.feedback?.seq ?? 0) + 1 };
+    this.feedback = {
+      message,
+      seq: (this.feedback?.seq ?? 0) + 1,
+      nextOrder: this.history?.present.orders[0] ?? null,
+    };
     this.publish();
   }
 
-  private recordStars(levelId: string, stars: Stars): void {
-    const best = this.bestStars.get(levelId) ?? 0;
-    if (stars > best) this.bestStars.set(levelId, stars);
+  private recordStarsIfWon(state: GameState): void {
+    if (state.status !== 'won' || !this.level) return;
+    const stars = computeStars(state.movesUsed, this.level.par);
+    if (stars > (this.bestStars.get(this.level.id) ?? 0)) this.bestStars.set(this.level.id, stars);
   }
 
   private currentLevelIndex(): number {

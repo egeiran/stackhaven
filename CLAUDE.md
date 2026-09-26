@@ -37,6 +37,8 @@ src/main.tsx Composition root: the only place that wires the layers together.
   See `docs/ARCHITECTURE.md`.
 - `applyMove` is pure: never mutate state; return a new state and events.
 - Game logic never lives in render or ui. The renderer only animates events.
+- Taps are never blocked by animations: the controller validates them against
+  the logical state and queues the animations (see `GameController`).
 - No global mutable state outside `GameController`. Module-level constants
   (shared geometries, `LEVELS`) are fine as long as they are never mutated.
 - New mechanics are new `Rule`s (`src/core/rules.ts`), not edits to `applyMove`.

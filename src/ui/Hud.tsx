@@ -16,17 +16,12 @@ export function Hud({ controller, view, level, state }: HudProps) {
   const movesLeft = state.moveLimit - state.movesUsed;
   // Every remaining order needs at least one more move, so this is the best the player can still get.
   const bestPossible = computeStars(state.movesUsed + state.orders.length, level.par);
-  const locked = view.isAnimating;
 
   return (
     <div className="hud">
       <header className="hud__top panel">
         <div className="hud__row">
-          <button
-            className="button button--quiet"
-            onClick={() => controller.openLevelSelect()}
-            disabled={locked}
-          >
+          <button className="button button--quiet" onClick={() => controller.openLevelSelect()}>
             ‹ {STRINGS.levels}
           </button>
           <h1 className="hud__title">
@@ -54,7 +49,7 @@ export function Hud({ controller, view, level, state }: HudProps) {
         <p className="hint" aria-live="polite">
           {view.feedback ? (
             <span key={view.feedback.seq} className="hint__feedback">
-              {feedbackText(view.feedback.message, state.orders[0])}
+              {feedbackText(view.feedback.message, view.feedback.nextOrder)}
             </span>
           ) : view.selectedStack === null ? (
             STRINGS.hintPick
@@ -63,18 +58,10 @@ export function Hud({ controller, view, level, state }: HudProps) {
           )}
         </p>
         <div className="hud__actions">
-          <button
-            className="button"
-            onClick={() => controller.undo()}
-            disabled={locked || !view.canUndo}
-          >
+          <button className="button" onClick={() => controller.undo()} disabled={!view.canUndo}>
             ↶ {STRINGS.undo}
           </button>
-          <button
-            className="button"
-            onClick={() => controller.restart()}
-            disabled={locked || state.movesUsed === 0}
-          >
+          <button className="button" onClick={() => controller.restart()} disabled={!view.canUndo}>
             ⟲ {STRINGS.restart}
           </button>
         </div>

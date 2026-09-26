@@ -27,6 +27,8 @@ interface Tween {
 
 export class Animator {
   private tweens: Tween[] = [];
+  /** Speeds every tween up (> 1) or down (< 1). */
+  timeScale = 1;
 
   get isActive(): boolean {
     return this.tweens.length > 0;
@@ -62,7 +64,7 @@ export class Animator {
   update(dt: number): void {
     const finished: Tween[] = [];
     for (const tween of this.tweens) {
-      tween.elapsed += dt;
+      tween.elapsed += dt * this.timeScale;
       if (tween.elapsed < 0) continue;
       const t = Math.min(tween.elapsed / tween.duration, 1);
       tween.apply(tween.ease(t));

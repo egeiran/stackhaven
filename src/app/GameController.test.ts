@@ -2,19 +2,22 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { GameEvent, GameState, Level } from '../core';
 import { makeLevel } from '../core/testing';
 import { GameController } from './GameController';
-import type { GameRenderer, TapTarget } from './ports';
+import type { GameRenderer, Selection, TapTarget } from './ports';
 
 /** Records what the controller asks for. Animations finish immediately unless paused. */
 class FakeRenderer implements GameRenderer {
   shown: (GameState | null)[] = [];
   played: (readonly GameEvent[])[] = [];
-  selection: number | null = null;
+  selection: Selection | null = null;
+  backlog: number[] = [];
   paused = false;
   private tapHandler: ((target: TapTarget) => void) | null = null;
   private pending: (() => void)[] = [];
 
   showState(state: GameState | null) {
     this.shown.push(state);
+    // Like the real renderer: showing a state aborts the running animation.
+    this.finishAnimations();
   }
   playEvents(events: readonly GameEvent[]) {
     this.played.push(events);
@@ -22,13 +25,17 @@ class FakeRenderer implements GameRenderer {
       ? new Promise<void>((resolve) => this.pending.push(resolve))
       : Promise.resolve();
   }
-  setSelection(stack: number | null) {
-    this.selection = stack;
+  setSelection(selection: Selection | null) {
+    this.selection = selection;
+  }
+  setBacklog(count: number) {
+    this.backlog.push(count);
   }
   onTap(handler: (target: TapTarget) => void) {
     this.tapHandler = handler;
     return () => (this.tapHandler = null);
   }
+  /** Finishes the animations that are currently playing. */
   finishAnimations() {
     this.pending.splice(0).forEach((resolve) => resolve());
   }
@@ -88,7 +95,7 @@ describe('tapping', () => {
   it('selects a stack, and deselects it on a second tap', async () => {
     await controller.handleTap(stack(0));
     expect(view().selectedStack).toBe(0);
-    expect(renderer.selection).toBe(0);
+    expect(renderer.selection).toEqual({ stack: 0, containerId: 'c1' });
 
     await controller.handleTap(stack(0));
     expect(view().selectedStack).toBeNull();
@@ -136,36 +143,124 @@ describe('tapping', () => {
   });
 });
 
-describe('animation lock', () => {
-  beforeEach(() => controller.startLevel('make-room'));
+/** Lets queued promise callbacks run (the controller moves on to the next animation). */
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  it('ignores input while a move is animating', async () => {
+describe('input queue', () => {
+  beforeEach(() => {
+    controller.startLevel('make-room');
     renderer.paused = true;
-    await controller.handleTap(stack(0));
-    const moving = controller.handleTap(stack(2));
-
-    expect(view().isAnimating).toBe(true);
-    await controller.handleTap(stack(1));
-    controller.undo();
-    expect(view().selectedStack).toBeNull();
-
-    renderer.finishAnimations();
-    await moving;
-    expect(view().isAnimating).toBe(false);
-    expect(view().state?.movesUsed).toBe(1);
-    expect(view().canUndo).toBe(true);
   });
 
-  it('shows the new state only once the animation has finished', async () => {
-    renderer.paused = true;
+  it('accepts taps while a move is animating and plays the moves in order', async () => {
+    await controller.handleTap(stack(0));
+    const first = controller.handleTap(stack(2)); // blue out of the way
+    await controller.handleTap(stack(0));
+    const second = controller.handleTap(truck); // red
+
+    expect(renderer.played).toHaveLength(1);
+    expect(view().isAnimating).toBe(true);
+
+    renderer.finishAnimations();
+    await first;
+    await flush();
+    expect(renderer.played).toHaveLength(2);
+    expect(renderer.played[1]?.map((event) => event.type)).toEqual([
+      'ContainerLifted',
+      'ContainerDelivered',
+    ]);
+
+    renderer.finishAnimations();
+    await second;
+    await flush();
+    expect(view().isAnimating).toBe(false);
+    expect(view().state?.movesUsed).toBe(2);
+  });
+
+  it('checks queued taps against the state after the queued moves', async () => {
+    await controller.handleTap(stack(0));
+    void controller.handleTap(stack(2)); // blue is on its way to stack 2
+
+    // On screen stack 2 is still empty, but after the queued move it holds blue.
+    await controller.handleTap(stack(2));
+
+    expect(view().feedback).toBeNull();
+    expect(view().selectedStack).toBe(2);
+    expect(renderer.selection).toEqual({ stack: 2, containerId: 'c1' });
+  });
+
+  it('gives feedback immediately for an illegal queued move', async () => {
+    await controller.handleTap(stack(0));
+    void controller.handleTap(stack(2));
+    await controller.handleTap(stack(1));
+    await controller.handleTap(truck); // green, but the truck wants red
+
+    expect(view().feedback).toMatchObject({ message: 'wrong-color', nextOrder: 'red' });
+  });
+
+  it('shows a move on screen only once its animation has finished', async () => {
     await controller.handleTap(stack(0));
     const moving = controller.handleTap(stack(2));
 
     expect(view().state?.movesUsed).toBe(0);
+    expect(view().canUndo).toBe(true);
 
     renderer.finishAnimations();
     await moving;
     expect(view().state?.movesUsed).toBe(1);
+  });
+
+  it('tells the renderer how many moves are waiting, so it can hurry', async () => {
+    await controller.handleTap(stack(0));
+    void controller.handleTap(stack(2));
+    await controller.handleTap(stack(0));
+    void controller.handleTap(truck);
+
+    expect(renderer.backlog.at(-1)).toBe(1);
+  });
+
+  it('undo during an animation drops the latest move and jumps to the result', async () => {
+    await controller.handleTap(stack(0));
+    void controller.handleTap(stack(2)); // move 1: blue to stack 2
+    await controller.handleTap(stack(0));
+    void controller.handleTap(truck); // move 2: deliver red (queued)
+
+    controller.undo();
+    await flush();
+
+    expect(view().isAnimating).toBe(false);
+    expect(view().state?.movesUsed).toBe(1);
+    expect(colors()).toEqual([['red'], ['green'], ['blue']]);
+    expect(renderer.shown.at(-1)).toBe(view().state);
+    expect(renderer.played).toHaveLength(1); // the delivery was never animated
+  });
+
+  it('restart during an animation starts over cleanly', async () => {
+    await controller.handleTap(stack(0));
+    void controller.handleTap(stack(2));
+
+    controller.restart();
+    await flush();
+
+    expect(view()).toMatchObject({ isAnimating: false, canUndo: false });
+    expect(view().state?.movesUsed).toBe(0);
+  });
+
+  it('ignores taps once the queued moves have finished the level', async () => {
+    renderer.paused = false;
+    await controller.handleTap(stack(0));
+    await controller.handleTap(stack(2));
+    await controller.handleTap(stack(0));
+    await controller.handleTap(truck);
+    await controller.handleTap(stack(1));
+    await controller.handleTap(truck);
+    renderer.paused = true;
+    await controller.handleTap(stack(2));
+    void controller.handleTap(truck); // wins (logically)
+
+    await controller.handleTap(stack(0));
+    expect(view().selectedStack).toBeNull();
+    expect(view().outcome).toBeNull(); // not until the animation has played
   });
 });
 

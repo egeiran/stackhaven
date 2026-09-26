@@ -1,10 +1,13 @@
 import { Vector2 } from 'three';
 import type { TapTarget } from '../app/ports';
 
-/** A press that moves further than this is a drag, not a tap. */
+/**
+ * A press that moves further than this is a drag, not a tap. There is
+ * deliberately no time limit: a busy main thread (e.g. compiling a shader the
+ * first time something is highlighted) can delay the release event, and a slow
+ * tap is still a tap.
+ */
 const TAP_SLOP_PX = 14;
-/** A press held longer than this is not a tap either. */
-const TAP_MAX_MS = 700;
 
 /**
  * Turns pointer presses on the canvas into taps. Pointer Events cover mouse,
@@ -12,7 +15,7 @@ const TAP_MAX_MS = 700;
  * depends on hover. What was tapped is decided by `pick` (see picking.ts).
  */
 export class TapPicker {
-  private press: { id: number; x: number; y: number; time: number } | null = null;
+  private press: { id: number; x: number; y: number } | null = null;
 
   constructor(
     private readonly element: HTMLElement,
@@ -33,7 +36,7 @@ export class TapPicker {
   private readonly handleDown = (event: PointerEvent) => {
     // A second finger means a gesture, not a tap.
     this.press = event.isPrimary
-      ? { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp }
+      ? { id: event.pointerId, x: event.clientX, y: event.clientY }
       : null;
   };
 
@@ -42,7 +45,7 @@ export class TapPicker {
     this.press = null;
     if (!press || press.id !== event.pointerId) return;
     const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
-    if (moved > TAP_SLOP_PX || event.timeStamp - press.time > TAP_MAX_MS) return;
+    if (moved > TAP_SLOP_PX) return;
 
     const rect = this.element.getBoundingClientRect();
     const ndc = new Vector2(
