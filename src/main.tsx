@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GameController } from './app/GameController';
+import { decodeLevel, withCustomLevel } from './app/levelLink';
 import { LEVELS } from './app/levelRegistry';
+import type { Level } from './core';
 import { YardRenderer } from './render/YardRenderer';
 import { App } from './ui/App';
 import './styles.css';
@@ -12,12 +14,17 @@ const uiHost = document.getElementById('ui');
 if (!sceneHost || !uiHost) throw new Error('index.html is missing #scene or #ui');
 
 // The insets tell the camera how much of the screen the HUD covers (see ui/ui.css).
-const renderer = new YardRenderer(sceneHost, { insetTop: 150, insetBottom: 96 });
-const controller = new GameController(LEVELS, renderer);
+// ?level=03-last-in-first-out opens a bundled level directly (handy for playtesting links);
+// ?custom=… carries a whole level, e.g. a draft from the level editor.
+const params = new URLSearchParams(window.location.search);
+const custom = readCustomLevel(params.get('custom'));
+const levels = custom ? withCustomLevel(LEVELS, custom) : LEVELS;
 
-// ?level=03-last-in-first-out opens a level directly (handy for playtesting links).
-const startLevel = new URLSearchParams(window.location.search).get('level');
-if (startLevel && LEVELS.some((level) => level.id === startLevel)) {
+const renderer = new YardRenderer(sceneHost, { insetTop: 150, insetBottom: 96 });
+const controller = new GameController(levels, renderer);
+
+const startLevel = custom?.id ?? params.get('level');
+if (startLevel && levels.some((level) => level.id === startLevel)) {
   controller.startLevel(startLevel);
 }
 
@@ -38,3 +45,13 @@ import.meta.hot?.dispose(() => {
   renderer.dispose();
   document.removeEventListener('gesturestart', preventZoom);
 });
+
+function readCustomLevel(encoded: string | null): Level | null {
+  if (!encoded) return null;
+  try {
+    return decodeLevel(encoded);
+  } catch (error) {
+    console.error('Ignoring ?custom level:', error);
+    return null;
+  }
+}
