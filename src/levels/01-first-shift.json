@@ -1,0 +1,15 @@
+{
+  "id": "01-first-shift",
+  "name": "First Shift",
+  "stacks": [["green", "red"], ["blue"], ["yellow"]],
+  "maxHeight": 3,
+  "orders": ["red", "green", "blue", "yellow"],
+  "moveLimit": 8,
+  "par": 4,
+  "solution": [
+    { "type": "deliver", "from": 0 },
+    { "type": "deliver", "from": 0 },
+    { "type": "deliver", "from": 1 },
+    { "type": "deliver", "from": 2 }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "02-make-room",
+  "name": "Make Room",
+  "stacks": [["red", "blue"], ["green"], []],
+  "maxHeight": 3,
+  "orders": ["red", "green", "blue"],
+  "moveLimit": 8,
+  "par": 4,
+  "solution": [
+    { "type": "move", "from": 0, "to": 2 },
+    { "type": "deliver", "from": 0 },
+    { "type": "deliver", "from": 1 },
+    { "type": "deliver", "from": 2 }
+  ]
+}

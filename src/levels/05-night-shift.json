@@ -1,0 +1,28 @@
+{
+  "id": "05-night-shift",
+  "name": "Night Shift",
+  "stacks": [
+    ["yellow", "red", "purple"],
+    ["yellow", "blue", "orange"],
+    ["white"],
+    ["green", "white"]
+  ],
+  "maxHeight": 3,
+  "orders": ["red", "blue", "yellow", "green", "yellow", "purple", "orange", "white", "white"],
+  "moveLimit": 17,
+  "par": 12,
+  "solution": [
+    { "type": "move", "from": 1, "to": 2 },
+    { "type": "move", "from": 0, "to": 2 },
+    { "type": "deliver", "from": 0 },
+    { "type": "deliver", "from": 1 },
+    { "type": "deliver", "from": 0 },
+    { "type": "move", "from": 3, "to": 0 },
+    { "type": "deliver", "from": 3 },
+    { "type": "deliver", "from": 1 },
+    { "type": "deliver", "from": 2 },
+    { "type": "deliver", "from": 2 },
+    { "type": "deliver", "from": 0 },
+    { "type": "deliver", "from": 2 }
+  ]
+}

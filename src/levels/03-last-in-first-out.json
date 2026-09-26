@@ -1,0 +1,17 @@
+{
+  "id": "03-last-in-first-out",
+  "name": "Last In, First Out",
+  "stacks": [["red", "blue", "green"], ["yellow"], []],
+  "maxHeight": 3,
+  "orders": ["red", "yellow", "blue", "green"],
+  "moveLimit": 10,
+  "par": 6,
+  "solution": [
+    { "type": "move", "from": 0, "to": 2 },
+    { "type": "move", "from": 0, "to": 2 },
+    { "type": "deliver", "from": 0 },
+    { "type": "deliver", "from": 1 },
+    { "type": "deliver", "from": 2 },
+    { "type": "deliver", "from": 2 }
+  ]
+}
