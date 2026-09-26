@@ -1,0 +1,350 @@
+/* The level editor is a normal, scrollable page (unlike the full-screen game). */
+
+:root {
+  --ink: #1f2a33;
+  --ink-soft: #52616d;
+  --line: rgba(31, 42, 51, 0.12);
+  --bg: #eef3f6;
+  --card: #fff;
+  --accent: #2f6db3;
+  --warn: #c8463d;
+  --ok: #2f8a4c;
+  color: var(--ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+h2 {
+  font-size: 17px;
+}
+
+h3 {
+  font-size: 14px;
+  margin: 14px 0 6px;
+}
+
+.editor {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.editor__header h1 {
+  font-size: 22px;
+}
+
+.editor__main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.editor__yard {
+  grid-row: span 3;
+}
+
+@media (max-width: 800px) {
+  .editor__main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor__yard {
+    grid-row: auto;
+  }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.card__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.card > h2 {
+  margin-bottom: 12px;
+}
+
+.button,
+select {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.button--primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* ---------- Yard ---------- */
+
+.yard {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 16px 12px 8px;
+  border-radius: 12px;
+  background: #a2a5a6;
+  overflow-x: auto;
+}
+
+.yard__column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.yard__stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 3px;
+  padding: 4px;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.yard__stack--selected {
+  border-style: solid;
+  border-color: #f5c542;
+  background: rgba(245, 197, 66, 0.3);
+}
+
+.yard__slot,
+.yard__container {
+  display: block;
+  width: 56px;
+  height: 30px;
+  border-radius: 4px;
+}
+
+.yard__container {
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.yard__index {
+  font-size: 11px;
+  color: #fff;
+}
+
+.yard__truck {
+  position: relative;
+  width: 72px;
+  height: 64px;
+  border: 3px solid #8d959c;
+  border-radius: 10px;
+  background: #33383d;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.yard__truck:disabled {
+  cursor: default;
+}
+
+.yard__truck-load {
+  position: absolute;
+  inset: 6px 6px auto;
+  height: 14px;
+  border-radius: 3px;
+  opacity: 0.8;
+}
+
+.palette {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+.swatch--active {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.chip {
+  min-width: 34px;
+  height: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.chip:disabled {
+  cursor: default;
+}
+
+.playtest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.playtest__result {
+  margin-top: 8px;
+}
+
+/* ---------- Settings, check, JSON ---------- */
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.fields input {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--ink);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.stepper span {
+  flex: 1;
+}
+
+.stepper strong {
+  min-width: 18px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.problems {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: var(--warn);
+}
+
+.solver__text {
+  font-size: 14px;
+}
+
+.json {
+  margin: 0;
+  padding: 12px;
+  max-height: 420px;
+  overflow: auto;
+  border-radius: 10px;
+  background: #1f2a33;
+  color: #e8eef2;
+  font-size: 12px;
+  line-height: 1.45;
+}

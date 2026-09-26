@@ -10,6 +10,7 @@ import tseslint from 'typescript-eslint';
 //   render -> core, and *types* from app (it implements the GameRenderer port)
 //   ui     -> core, app
 //   app    -> core
+//   editor -> core, app, ui (the level editor page; 2D, no three.js)
 //   main.tsx is the composition root and may import everything.
 // ---------------------------------------------------------------------------
 
@@ -48,13 +49,16 @@ export default defineConfig(
   },
   { files: ['**/*.js'], extends: [tseslint.configs.disableTypeChecked] },
 
-  { files: ['src/ui/**/*.tsx', 'src/ui/**/*.ts'], extends: [reactHooks.configs.flat.recommended] },
+  {
+    files: ['src/ui/**/*.{ts,tsx}', 'src/editor/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat.recommended],
+  },
 
   layer('core', [
     noThree,
     noReact,
     {
-      regex: intoLayer('render', 'ui', 'app', 'levels'),
+      regex: intoLayer('render', 'ui', 'app', 'levels', 'editor'),
       message: 'core is the innermost layer and must not import other layers.',
     },
   ]),
@@ -86,19 +90,26 @@ export default defineConfig(
   },
   layer('render', [
     noReact,
-    { regex: intoLayer('ui'), message: 'render must not import ui.' },
+    { regex: intoLayer('ui', 'editor'), message: 'render must not import ui or the editor.' },
     {
       regex: intoLayer('app'),
       allowTypeImports: true,
       message: 'render may only import *types* from app (use `import type`).',
     },
   ]),
-  layer('ui', [noThree, { regex: intoLayer('render'), message: 'ui must not import render.' }]),
+  layer('ui', [
+    noThree,
+    { regex: intoLayer('render', 'editor'), message: 'ui must not import render or the editor.' },
+  ]),
+  layer('editor', [
+    noThree,
+    { regex: intoLayer('render'), message: 'The editor is 2D: it must not import render.' },
+  ]),
   layer('app', [
     noThree,
     noReact,
     {
-      regex: intoLayer('render', 'ui'),
+      regex: intoLayer('render', 'ui', 'editor'),
       message: 'app talks to render through the GameRenderer interface, and ui reads app.',
     },
   ]),

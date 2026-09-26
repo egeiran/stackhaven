@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rolldownOptions: {
+      // Two pages: the game and the level editor.
+      input: { game: 'index.html', editor: 'editor.html' },
       output: {
         // Libraries change rarely: separate chunks stay cached between deploys.
         codeSplitting: {
