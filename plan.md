@@ -25,7 +25,7 @@ Mål: Repoet kjører, og jeg forstår hvordan det henger sammen.
 
 - [x] Kjør oppstartsprompten i Claude Code og godkjenn planen den foreslår
 - [x] `pnpm dev` fungerer lokalt
-- [ ] CI er grønn og spillet ligger ute på GitHub Pages
+- [x] CI er grønn og spillet ligger ute på GitHub Pages
 - [ ] Åpnet spillet på mobilen
 - [ ] Lest `docs/ARCHITECTURE.md` og kan forklare lagene `core` / `render` / `ui` / `app` med egne ord
 - [ ] Fulgt ett trekk gjennom koden: tap → controller → `applyMove` → events → animasjon

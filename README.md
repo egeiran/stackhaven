@@ -5,6 +5,8 @@ Move containers between stacks with a gantry crane and deliver them to the
 trucks in the right order, within a limited number of moves. Later, the stars
 you earn will rebuild a harbour in a Norwegian coastal town.
 
+**Play it:** https://egeiran.github.io/stackhaven/ (works on phones)
+
 **Status:** milestone 1, a playable stacking puzzle with five levels.
 
 ## Tech
