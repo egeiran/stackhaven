@@ -1,19 +1,30 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { GameController } from './app/GameController';
+import { LEVELS } from './app/levelRegistry';
 import { YardRenderer } from './render/YardRenderer';
 import { App } from './ui/App';
 import './styles.css';
 
-// Composition root: the only file allowed to wire all layers together.
+// Composition root: the only file that wires the layers together.
 const sceneHost = document.getElementById('scene');
 const uiHost = document.getElementById('ui');
 if (!sceneHost || !uiHost) throw new Error('index.html is missing #scene or #ui');
 
-const renderer = new YardRenderer(sceneHost);
+// The insets tell the camera how much of the screen the HUD covers (see ui/ui.css).
+const renderer = new YardRenderer(sceneHost, { insetTop: 150, insetBottom: 96 });
+const controller = new GameController(LEVELS, renderer);
+
+// ?level=03-last-in-first-out opens a level directly (handy for playtesting links).
+const startLevel = new URLSearchParams(window.location.search).get('level');
+if (startLevel && LEVELS.some((level) => level.id === startLevel)) {
+  controller.startLevel(startLevel);
+}
+
 import.meta.hot?.dispose(() => renderer.dispose());
 
 createRoot(uiHost).render(
   <StrictMode>
-    <App />
+    <App controller={controller} />
   </StrictMode>,
 );

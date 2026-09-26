@@ -1,0 +1,21 @@
+// Scene colours (container colours live in core/palette.ts).
+export const THEME = {
+  sky: '#cddfe8',
+  ground: '#80858a',
+  yardPad: '#a2a5a6',
+  slot: '#b9bcbc',
+  slotSelected: '#f5c542',
+  laneMarking: '#ebe7dc',
+  water: '#3f7d97',
+  quay: '#a19e96',
+  bollard: '#2f3337',
+  craneBody: '#7b93a6',
+  craneAccent: '#3a4d5e',
+  spreader: '#33383d',
+  truckChassis: '#33383d',
+  truckCabIdle: '#8d959c',
+  tyre: '#1f2225',
+  hemiSky: '#dcebf7',
+  hemiGround: '#6f6b64',
+  sun: '#fff1dc',
+} as const;
