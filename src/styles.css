@@ -1,0 +1,38 @@
+/* Global page setup: a full-screen canvas with the React UI layered on top. */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #cddfe8;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  /* We handle every gesture ourselves: no browser panning or pinch-zoom. */
+  touch-action: none;
+}
+
+#scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  /* Let taps fall through to the canvas except where UI elements opt back in. */
+  pointer-events: none;
+}
